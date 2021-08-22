@@ -1,0 +1,33 @@
+#!/usr/bin/env sh
+
+#git config --get remote.origin.url | sed -E 's/\/\/([^/]+@)?/\/\/username:password/' -
+
+. ~/.profile 2>/dev/null
+. ~/.config/rightend-credentials
+
+if [ -d .git ]; then
+    git config credential.helper store
+    git config credential.username "$reName"
+fi
+
+oldName="$(git config --global user.name)"
+oldEmail="$(git config --global user.email)"
+
+git config --global user.name "$reName"
+git config --global user.email "$reEmail"
+
+if test "$1" = "push"; then
+    echo "Password: $rePassword"
+fi
+
+#ensure vanilla git errors out
+mv .git-re .git 2>/dev/null
+
+git "$@"
+
+#ensure vanilla git errors out
+mv .git .git-re 2>/dev/null
+
+git config --global user.name "$oldName"
+git config --global user.email "$oldEmail"
+

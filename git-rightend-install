@@ -1,0 +1,84 @@
+#!/usr/bin/env sh
+
+originalDirectory="$(pwd)"
+
+cd -P -- "$(dirname -- "$0")"
+
+mkdir -p ~/.local/bin
+cp -f ./git-rightend ~/.local/bin
+ln -s -T "$HOME/.local/bin/git-rightend" "$HOME/.local/bin/regit" 2>/dev/null
+if ! test -f "$HOME/.local/bin/git-rightend"; then
+    echo "Failed to install git-rightend!: could not copy git-rightend to ~/.local/bin"
+    exit 1
+fi
+if command -v hash >/dev/null; then
+  hash -d git-rightend 2>/dev/null
+fi
+
+if ! command -v git-rightend >/dev/null; then
+    . /etc/environment 2>/dev/null
+    . ~/.profile 2>/dev/null
+    if command -v hash >/dev/null; then
+      hash -d git-rightend 2>/dev/null
+    fi
+
+    if ! command -v git-rightend >/dev/null; then
+        printf '%s\n' \
+            '' \
+            '# set PATH so it includes user'\''s private bin if it exists' \
+            'if [ -d "$HOME/.local/bin" ] ; then' \
+            '  PATH="$HOME/.local/bin:$PATH"' \
+            'fi' >> ~/.profile
+        
+        . ~/.profile 2>/dev/null
+        if command -v hash >/dev/null; then
+          hash -d git-rightend 2>/dev/null
+        fi
+        
+        if ! command -v git-rightend >/dev/null; then
+            echo "Failed to install git-rightend!: could not add ~/.local/bin to the path"
+            exit 1
+        fi
+    fi
+fi
+
+if command -v hash >/dev/null; then
+  hash -d regit 2>/dev/null
+fi
+
+reName=""
+reEmail=""
+rePassword=""
+
+while true; do
+    read -p "Enter GitHub name used for RightEnd: " reName
+    read -p "Enter GitHub email used for RightEnd: " reEmail
+    read -p "Enter GitHub password used for RightEnd: " rePassword
+    
+    if command -v curl >/dev/null; then
+        curl --head --silent --fail "https://github.com/$reName" >/dev/null 2>&1 && break
+    elif command -v wget >/dev/null; then
+        wget -O/dev/null --spider "https://github.com/$reName" >/dev/null 2>&1 && break
+    else
+        break
+    fi
+    if ! ping -c 1 -W 3 2606:4700:4700::1111 >/dev/null 2>&1; then
+        echo WARNING: you are offline. Unable to verify that your username exists on GitHub
+        break
+    else
+        echo Invalid username. The username must be a valid GitHub user
+    fi
+done
+
+mkdir -p ~/.config
+printf '%s\n' \
+    "reName='$reName'" \
+    "reEmail='$reEmail'" \
+    "rePassword='$rePassword'" > "$HOME/.config/rightend-credentials"
+
+# prevent other users from reading the file
+chown "$USER:$USER" ~/.config/rightend-credentials
+chmod 0600 ~/.config/rightend-credentials
+
+cd -- "$originalDirectory"
+
